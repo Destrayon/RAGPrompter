@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 import uvicorn
+from routers import files
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -8,6 +9,10 @@ app = FastAPI()
 @app.get("/")
 def read_root():
     return {"status": "ok"}
+
+app = FastAPI(title="Project-based File Upload Service")
+
+app.include_router(files.router, prefix="/files", tags=["files"])
 
 # Run the server
 if __name__ == "__main__":
