@@ -1,106 +1,134 @@
 ﻿@page "/"
+@using RAGPrompterWebApp.Components
+@inject IJSRuntime JS
 
-<div class="min-h-screen bg-gray-950 p-4 sm:p-6 md:p-8">
-    <div class="max-w-3xl mx-auto bg-gray-900 text-white rounded-lg shadow-xl overflow-hidden">
+<div class="min-h-screen bg-gray-950 p-6 sm:p-8 md:p-12">
+    <div class="max-w-5xl mx-auto bg-gray-900 text-white rounded-xl shadow-xl overflow-hidden">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-indigo-600/10 to-indigo-500/10 p-4 sm:p-6 border-b border-indigo-600/20">
-            <h1 class="text-xl sm:text-2xl font-semibold">Claude Prompt Builder</h1>
+        <div class="bg-gradient-to-r from-indigo-600/10 to-indigo-500/10 p-8 sm:p-12 border-b border-indigo-600/20">
+            <h1 class="text-2xl sm:text-3xl font-semibold">RAG Prompt Builder</h1>
         </div>
 
-        <div class="p-4 sm:p-6">
+        <div class="p-8 sm:p-12">
             <!-- Project Selection -->
-            <div class="mb-6">
-                <label class="block mb-2 text-sm font-medium text-gray-300">Project</label>
-                <div class="flex gap-2">
-                    <div class="relative flex-1">
-                        <button @onclick="ToggleDropdown"
-                                class="flex items-center justify-between w-full bg-gray-800 px-4 py-2.5 rounded border border-gray-700 hover:border-indigo-500/50 transition-colors">
-                            @selectedProject
-                            <i class="fas fa-chevron-down text-gray-400"></i>
+            <div class="mb-8">
+                <label class="block mb-4 text-base font-medium text-gray-300">Project</label>
+                <div class="space-y-4">
+                    <div class="flex gap-4">
+                        <div @ref="dropdownRef" class="relative flex-1">
+                            <button @onclick="ToggleDropdown"
+                                    class="flex items-center justify-between w-full bg-gray-800 px-6 py-4 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors">
+                                @selectedProject
+                                <i class="fas fa-chevron-down text-gray-400 text-xl"></i>
+                            </button>
+                            @if (showDropdown)
+
+                            {
+                                <div class="absolute top-full mt-2 w-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 z-10">
+                                    @foreach (var project in projects)
+
+                                    {
+                                        <div class="flex items-center justify-between px-8 py-5 hover:bg-gray-700 cursor-pointer group"
+                                             @onclick="() => SelectProject(project)">
+                                            <span class="text-lg">@project</span>
+                                            @if (project != "Default")
+
+                                            {
+                                                <button @onclick:stopPropagation="true"
+                                                        @onclick="@(() => DeleteProject(project))"
+                                                        class="text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 text-xl">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <button @onclick="ShowNewProjectInput"
+                                class="bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors">
+                            <i class="fas fa-plus text-xl"></i>
                         </button>
-                        @if (showDropdown)
-                        {
-                            <div class="absolute top-full mt-1 w-full bg-gray-800 rounded shadow-lg border border-gray-700 z-10">
-                                @foreach (var project in projects)
-                                {
-                                    <div class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-700 cursor-pointer group"
-                                         @onclick="() => SelectProject(project)">
-                                        <span>@project</span>
-                                        @if (project != "Default")
-                                        {
-                                            <button @onclick="@(() => DeleteProject(project))"
-                                                    class="text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        }
                     </div>
-                    <button @onclick="ShowNewProjectInput"
-                            class="bg-gray-800 px-4 py-2.5 rounded border border-gray-700 hover:border-indigo-500/50 transition-colors">
-                        <i class="fas fa-plus"></i>
-                    </button>
+                    @if (showNewProjectInput)
+
+                    {
+                        <div class="flex gap-4 mt-4">
+                            <input @bind="newProjectName"
+                                   @bind:event="oninput"
+                                   @onkeydown="@HandleNewProjectKeyPress"
+                                   class="flex-1 bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 focus:border-indigo-500/50 outline-none text-lg"
+                                   placeholder="Enter project name..." />
+                            <button @onclick="AddNewProject"
+                                    class="bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors">
+                                <i class="fas fa-check text-xl"></i>
+                            </button>
+                            <button @onclick="CancelNewProject"
+                                    class="bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    }
                 </div>
             </div>
 
             <!-- File Upload -->
-            <div class="mb-6">
-                <label class="block mb-2 text-sm font-medium text-gray-300">Upload Documents (Optional)</label>
-                <div class="space-y-2">
-                    <div class="flex gap-2">
+            <div class="mb-12">
+                <label class="block mb-4 text-base font-medium text-gray-300">Upload Documents (Optional)</label>
+                <div class="space-y-4">
+                    <div class="flex gap-4">
                         <InputFile OnChange="@UploadFiles" multiple class="hidden" id="fileInput" />
-                        <label for="fileInput" class="flex-1 flex items-center justify-center gap-2 bg-gray-800 px-4 py-2.5 rounded border border-gray-700 hover:border-indigo-500/50 transition-colors cursor-pointer">
-                            <i class="fas fa-file text-indigo-400"></i>
+                        <label for="fileInput" class="flex-1 flex items-center justify-center gap-4 bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors cursor-pointer text-lg">
+                            <i class="fas fa-file text-indigo-400 text-xl"></i>
                             Upload Files
                         </label>
 
                         <InputFile OnChange="@UploadFolders" multiple directory webkitdirectory class="hidden" id="folderInput" />
-                        <label for="folderInput" class="flex-1 flex items-center justify-center gap-2 bg-gray-800 px-4 py-2.5 rounded border border-gray-700 hover:border-indigo-500/50 transition-colors cursor-pointer">
-                            <i class="fas fa-upload text-indigo-400"></i>
+                        <label for="folderInput" class="flex-1 flex items-center justify-center gap-4 bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors cursor-pointer text-lg">
+                            <i class="fas fa-upload text-indigo-400 text-xl"></i>
                             Upload Folders
                         </label>
 
                         <button @onclick="ShowFileManager"
-                                class="bg-gray-800 px-4 py-2.5 rounded border border-gray-700 hover:border-indigo-500/50 transition-colors">
-                            <i class="fas fa-file"></i>
+                                class="bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors">
+                            <i class="fas fa-file text-xl"></i>
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Question Input -->
-            <div class="mb-6">
-                <label class="block mb-2 text-sm font-medium text-gray-300">Your question</label>
+            <div class="mb-12">
+                <label class="block mb-4 text-base font-medium text-gray-300">Your question</label>
                 <textarea @bind="question"
-                          class="w-full h-32 bg-gray-800 p-4 rounded border border-gray-700 focus:border-indigo-500/50 outline-none resize-none"
+                          class="w-full h-48 bg-gray-800 p-8 rounded-lg border border-gray-700 focus:border-indigo-500/50 outline-none resize-none text-lg"
                           placeholder="Enter your question for Claude here...">
-            </textarea>
+                </textarea>
             </div>
 
             <!-- Generate Button -->
             <button @onclick="GeneratePrompt"
-                    class="w-full bg-indigo-600 hover:bg-indigo-700 py-2.5 rounded mb-6 transition-colors font-medium">
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 py-5 rounded-lg mb-12 transition-colors font-medium text-xl">
                 Generate
             </button>
 
             <!-- Generated Prompt -->
             <div>
-                <label class="block mb-2 text-sm font-medium text-gray-300">Generated Prompt</label>
+                <label class="block mb-4 text-base font-medium text-gray-300">Generated Prompt</label>
                 <div class="relative">
                     <textarea readonly
                               value="@generatedPrompt"
-                              class="w-full h-32 bg-gray-800 p-4 rounded-t border border-gray-700 resize-none"
+                              class="w-full h-64 bg-gray-800 p-8 rounded-t-lg border border-gray-700 resize-none text-lg"
                               placeholder="Your formatted prompt will appear here...">
-                </textarea>
+                    </textarea>
                     @if (!string.IsNullOrEmpty(generatedPrompt))
+
                     {
-                        <div class="flex justify-end bg-gray-800 px-2 py-2 rounded-b border-x border-b border-gray-700">
+                        <div class="flex justify-end bg-gray-800 px-4 py-4 rounded-b-lg border-x border-b border-gray-700">
                             <button @onclick="CopyToClipboard"
-                                    class="text-gray-400 hover:text-white p-1 flex items-center gap-2">
-                                <span class="text-sm">Copy</span>
-                                <i class="fas fa-copy"></i>
+                                    class="text-gray-400 hover:text-white p-2 flex items-center gap-4">
+                                <span class="text-lg">Copy</span>
+                                <i class="fas fa-copy text-xl"></i>
                             </button>
                         </div>
                     }
@@ -108,66 +136,5 @@
             </div>
         </div>
     </div>
+    <FileManagerModal IsOpen="showFileManager" OnClose="@(() => showFileManager = false)" Files="files" />
 </div>
-
-@code {
-    private List<string> projects = new() { "Default" };
-    private string selectedProject = "Default";
-    private bool showDropdown;
-    private List<IBrowserFile> files = new();
-    private string question = "";
-    private string generatedPrompt = "";
-    private bool showFileManager;
-
-        private bool showNewProjectInput = false;
-
-    private void ShowNewProjectInput()
-    {
-        showNewProjectInput = true;
-    }
-
-    private void ShowFileManager()
-    {
-        showFileManager = true;
-    }
-
-    private void ToggleDropdown()
-    {
-        showDropdown = !showDropdown;
-    }
-
-    private void SelectProject(string project)
-    {
-        selectedProject = project;
-        showDropdown = false;
-    }
-
-    private void DeleteProject(string project)
-    {
-        projects.Remove(project);
-        if (selectedProject == project)
-        {
-            selectedProject = projects[0];
-        }
-    }
-
-    private async Task UploadFiles(InputFileChangeEventArgs e)
-    {
-        // Implement file upload logic
-    }
-
-    private async Task UploadFolders(InputFileChangeEventArgs e)
-    {
-        // Implement folder upload logic
-    }
-
-    private async Task GeneratePrompt()
-    {
-        // Implement prompt generation logic
-    }
-
-    private async Task CopyToClipboard()
-    {
-        // Implement clipboard logic using JS interop
-    }
-}

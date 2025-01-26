@@ -1,0 +1,45 @@
+﻿@if (IsOpen)
+{
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-gray-900 w-full max-w-2xl rounded-xl shadow-xl">
+            <div class="flex items-center justify-between p-6 border-b border-gray-800">
+                <h2 class="text-xl font-semibold text-white">File Manager</h2>
+                <div class="flex items-center gap-4">
+                    <button class="px-4 py-2 text-sm text-gray-400 hover:text-white">
+                        Clear All
+                    </button>
+                    <button @onclick="HandleClose" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                @if (!Files.Any())
+                {
+                    <div class="text-center py-12 text-gray-400">
+                        No files uploaded
+                    </div>
+                }
+                else
+                {
+                    <div class="space-y-2">
+                        @foreach (var file in Files)
+                        {
+                            <div class="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-file text-indigo-400"></i>
+                                    <span class="text-white">@file.Name</span>
+                                </div>
+                                <button class="text-gray-400 hover:text-red-400">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+

@@ -12,5 +12,27 @@
 <body>
     <div id="app">Loading...</div>
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        window.dropdownClickHandler = {
+            initialize: function (dropdownElement) {
+                document.addEventListener('click', function (e) {
+                    if (!dropdownElement.contains(e.target)) {
+                        DotNet.invokeMethodAsync('RAGPrompterWebApp', 'CloseDropdown');
+                    }
+                });
+            }
+        };
+
+        window.clipboardCopy = {
+            copyText: function (text) {
+                navigator.clipboard.writeText(text).then(function () {
+                    console.log("Copied to clipboard");
+                })
+                    .catch(function (error) {
+                        console.error("Failed to copy: ", error);
+                    });
+            }
+        };
+    </script>
 </body>
 </html>
