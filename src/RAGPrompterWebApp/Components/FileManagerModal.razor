@@ -1,11 +1,13 @@
-﻿@if (IsOpen)
+﻿@inject IJSRuntime JS
+
+@if (IsOpen)
 {
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-gray-900 w-full max-w-2xl rounded-xl shadow-xl">
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="HandleClose">
+        <div class="bg-gray-900 w-full max-w-2xl rounded-xl shadow-xl max-h-[80vh] flex flex-col" @onclick:stopPropagation>
             <div class="flex items-center justify-between p-6 border-b border-gray-800">
                 <h2 class="text-xl font-semibold text-white">File Manager</h2>
                 <div class="flex items-center gap-4">
-                    <button class="px-4 py-2 text-sm text-gray-400 hover:text-white">
+                    <button class="px-4 py-2 text-sm text-gray-400 hover:text-white" @onclick="HandleClearAll">
                         Clear All
                     </button>
                     <button @onclick="HandleClose" class="text-gray-400 hover:text-white">
@@ -13,8 +15,7 @@
                     </button>
                 </div>
             </div>
-
-            <div class="p-6">
+            <div class="p-6 overflow-y-auto">
                 @if (!Files.Any())
                 {
                     <div class="text-center py-12 text-gray-400">
@@ -24,22 +25,39 @@
                 else
                 {
                     <div class="space-y-2">
-                        @foreach (var file in Files)
+                        @foreach (var file in CurrentPageFiles)
                         {
                             <div class="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
                                 <div class="flex items-center gap-3">
                                     <i class="fas fa-file text-indigo-400"></i>
                                     <span class="text-white">@file.Name</span>
                                 </div>
-                                <button class="text-gray-400 hover:text-red-400">
+                                <button class="text-gray-400 hover:text-red-400" @onclick="() => HandleDelete(Files.IndexOf(file))">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         }
+                    </div>
+
+                    <div class="flex items-center justify-between mt-6">
+                        <div class="text-sm text-gray-400">
+                            Showing @(((CurrentPage - 1) * PageSize) + 1) to @Math.Min(CurrentPage * PageSize, Files.Count) of @Files.Count
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1 rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-50"
+                                    disabled="@(CurrentPage == 1)"
+                                    @onclick="() => ChangePage(CurrentPage - 1)">
+                                Previous
+                            </button>
+                            <button class="px-3 py-1 rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-50"
+                                    disabled="@(CurrentPage >= TotalPages)"
+                                    @onclick="() => ChangePage(CurrentPage + 1)">
+                                Next
+                            </button>
+                        </div>
                     </div>
                 }
             </div>
         </div>
     </div>
 }
-

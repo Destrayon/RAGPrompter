@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
+using System.Diagnostics;
 
 namespace RAGPrompterWebApp.Pages
 {
     public partial class Home
     {
+        private const int maxFileAmount = 100000;
         private ElementReference dropdownRef;
         private List<string> projects = new() { "Default" };
         private string selectedProject = "Default";
@@ -17,6 +19,10 @@ namespace RAGPrompterWebApp.Pages
         private bool showFileManager;
         private bool showNewProjectInput = false;
         private string newProjectName = "";
+        private CancellationTokenSource? uploadCts;
+        private bool isUploading = false;
+        private int totalFiles = 0;
+        private int processedFiles = 0;
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
@@ -112,19 +118,86 @@ namespace RAGPrompterWebApp.Pages
             }
         }
 
-        private async Task UploadFiles(InputFileChangeEventArgs e)
+        private async Task ProcessFiles(InputFileChangeEventArgs e, bool isFolder = false)
         {
-            // Implement file upload logic
+                isUploading = true;
+            StateHasChanged();
+
+            uploadCts = new CancellationTokenSource();
+
+
+
+            try
+            {
+                await Task.Run(async () => {
+                    var newFiles = e.GetMultipleFiles(maxFileAmount);
+                    totalFiles = newFiles.Count;
+                    processedFiles = 0;
+                    await InvokeAsync(StateHasChanged);
+
+                    foreach (var file in newFiles)
+                    {
+                        if (uploadCts.Token.IsCancellationRequested) break;
+
+                        string fileName = isFolder ? file.Name.Split('/').Last() : file.Name;
+
+                        if (!files.Any(f => f.Name == fileName && f.Size == file.Size))
+                        {
+                            files.Add(file);
+                            processedFiles++;
+
+                            if (processedFiles % 10 == 0)
+                            {
+                                await InvokeAsync(StateHasChanged);
+                                await Task.Delay(1);
+                            }
+                        }
+                    }
+                }, uploadCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                files.Clear();
+            }
+            finally
+            {
+                isUploading = false;
+                uploadCts.Dispose();
+                uploadCts = null;
+                await InvokeAsync(StateHasChanged);
+            }
         }
 
-        private async Task UploadFolders(InputFileChangeEventArgs e)
+        private async Task UploadFiles(InputFileChangeEventArgs e) =>
+            await ProcessFiles(e);
+
+        private async Task UploadFolders(InputFileChangeEventArgs e) =>
+            await ProcessFiles(e, true);
+
+        private void CancelUpload()
         {
-            // Implement folder upload logic
+            uploadCts?.Cancel();
+        }
+
+        private void HandleClearAll()
+        {
+            files.Clear();
+            StateHasChanged();
+        }
+
+        private void HandleDeleteFile(int index)
+        {
+            if (index >= 0 && index < files.Count)
+            {
+                files.RemoveAt(index);
+                StateHasChanged();
+            }
         }
 
         private void GeneratePrompt()
         {
             generatedPrompt = question;
+            question = "";
         }
 
         private async Task CopyToClipboard()

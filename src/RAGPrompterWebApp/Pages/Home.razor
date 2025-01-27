@@ -82,18 +82,12 @@
                             <i class="fas fa-file text-indigo-400 text-xl"></i>
                             Upload Files
                         </label>
-
-                        <InputFile OnChange="@UploadFolders" multiple directory webkitdirectory class="hidden" id="folderInput" />
-                        <label for="folderInput" class="flex-1 flex items-center justify-center gap-4 bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors cursor-pointer text-lg">
-                            <i class="fas fa-upload text-indigo-400 text-xl"></i>
-                            Upload Folders
-                        </label>
-
                         <button @onclick="ShowFileManager"
                                 class="bg-gray-800 px-8 py-5 rounded-lg border border-gray-700 hover:border-indigo-500/50 transition-colors">
                             <i class="fas fa-file text-xl"></i>
                         </button>
                     </div>
+                    <p class="text-sm text-gray-400">To upload folders, please compress them into an archive file (.zip, .rar, etc.) first.</p>
                 </div>
             </div>
 
@@ -136,5 +130,10 @@
             </div>
         </div>
     </div>
-    <FileManagerModal IsOpen="showFileManager" OnClose="@(() => showFileManager = false)" Files="files" />
+    <FileManagerModal IsOpen="showFileManager" OnClose="@(() => showFileManager = false)" Files="files" OnDeleteFile="HandleDeleteFile" OnClearAll="HandleClearAll"/>
+    <UploadProgressModal IsOpen="isUploading"
+                         IsProcessing="isUploading"
+                         TotalFiles="totalFiles"
+                         ProcessedFiles="processedFiles"
+                         OnCancel="CancelUpload" />
 </div>
