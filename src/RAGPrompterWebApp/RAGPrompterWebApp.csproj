@@ -15,4 +15,10 @@
     <Folder Include="Layout\" />
   </ItemGroup>
 
+	<ItemGroup>
+		<None Update="wwwroot/settings.js">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
 </Project>

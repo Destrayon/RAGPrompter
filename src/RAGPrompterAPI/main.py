@@ -1,17 +1,26 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from routers import files
 
-# Initialize FastAPI app
-app = FastAPI()
+# Initialize FastAPI app once with title
+app = FastAPI(title="Project-based File Upload Service")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 # Basic routes
 @app.get("/")
 def read_root():
     return {"status": "ok"}
 
-app = FastAPI(title="Project-based File Upload Service")
-
+# Include routers
 app.include_router(files.router, prefix="/files", tags=["files"])
 
 # Run the server

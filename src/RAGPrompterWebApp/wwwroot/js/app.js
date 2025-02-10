@@ -34,3 +34,13 @@ window.fileManager = {
         }));
     }
 };
+
+window.configManager = {
+    getApiBaseUrl: function () {
+        // Default fallback if settings object doesn't exist
+        if (!window.settings || !window.settings.apiBaseUrl) {
+            return 'http://localhost:8000';
+        }
+        return window.settings.apiBaseUrl;
+    }
+};

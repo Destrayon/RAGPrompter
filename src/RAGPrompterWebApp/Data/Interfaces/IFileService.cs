@@ -4,7 +4,10 @@ namespace RAGPrompterWebApp.Data.Interfaces
 {
     public interface IFileService
     {
-        Task<List<string>> UploadFiles(IEnumerable<IBrowserFile> files);
-        Task DeleteFile(string filename);
+        Task<(bool success, string error)> UploadFilesAsync(
+            string projectName,
+            IReadOnlyList<IBrowserFile> files,
+            IProgress<(int filesProcessed, int totalFiles, long bytesUploaded, long totalBytes, bool isZipping)> progress,
+            CancellationToken cancellationToken);
     }
 }

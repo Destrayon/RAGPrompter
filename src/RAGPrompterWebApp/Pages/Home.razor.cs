@@ -2,15 +2,19 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
-using System.Diagnostics;
+using RAGPrompterWebApp.Data.Interfaces;
+using RAGPrompterWebApp.Data.Services;
 
 namespace RAGPrompterWebApp.Pages
 {
-    public partial class Home
+    public partial class Home : IDisposable
     {
-        private const int maxFileAmount = 100000;
+        [Inject] private IFileService FileService { get; set; } = default!;
+        [Inject] private IProjectService ProjectService { get; set; } = default!;
+        [Inject] private IJSRuntime JS { get; set; } = default!;
+
+        private const int maxFileAmount = 5000;
         private ElementReference dropdownRef;
-        private List<string> projects = new() { "Default" };
         private string selectedProject = "Default";
         private bool showDropdown;
         private List<IBrowserFile> files = new();
@@ -20,9 +24,14 @@ namespace RAGPrompterWebApp.Pages
         private bool showNewProjectInput = false;
         private string newProjectName = "";
         private CancellationTokenSource? uploadCts;
-        private bool isUploading = false;
-        private int totalFiles = 0;
-        private int processedFiles = 0;
+
+        // Upload progress tracking
+        private bool isUploading;
+        private bool isZipping;
+        private int totalFiles;
+        private int processedFiles;
+        private long totalBytes;
+        private long uploadedBytes;
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
@@ -46,26 +55,80 @@ namespace RAGPrompterWebApp.Pages
             OnDropdownClose += HandleDropdownClose;
         }
 
+        public void Dispose()
+        {
+            OnDropdownClose -= HandleDropdownClose;
+        }
+
         private void HandleDropdownClose()
         {
             showDropdown = false;
             StateHasChanged();
         }
 
-        public void Dispose()
+        private async Task ProcessFiles(InputFileChangeEventArgs e, bool isFolder = false)
         {
-            OnDropdownClose -= HandleDropdownClose;
+            isUploading = true;
+            uploadCts = new CancellationTokenSource();
+
+            try
+            {
+                var newFiles = e.GetMultipleFiles(maxFileAmount);
+                var progress = new Progress<(int filesProcessed, int totalFiles, long bytesUploaded, long totalBytes, bool isZipping)>(report =>
+                {
+                    (processedFiles, totalFiles, uploadedBytes, totalBytes, isZipping) = report;
+                    StateHasChanged();
+                });
+
+                var (success, error) = await FileService.UploadFilesAsync(
+                    selectedProject,
+                    newFiles,
+                    progress,
+                    uploadCts.Token);
+
+                if (success && !uploadCts.Token.IsCancellationRequested)
+                {
+                    foreach (var file in newFiles)
+                    {
+                        if (!files.Any(f => f.Name == file.Name && f.Size == file.Size))
+                        {
+                            files.Add(file);
+                        }
+                    }
+                }
+                else if (!string.IsNullOrEmpty(error))
+                {
+                    // Handle error (maybe show to user)
+                    Console.WriteLine($"Upload error: {error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Upload error: {ex.Message}");
+                files.Clear();
+            }
+            finally
+            {
+                isUploading = false;
+                uploadCts?.Dispose();
+                uploadCts = null;
+                StateHasChanged();
+            }
         }
 
+        private async Task UploadFiles(InputFileChangeEventArgs e) =>
+            await ProcessFiles(e);
+
+        private void CancelUpload()
+        {
+            uploadCts?.Cancel();
+        }
+
+        #region Project Management
         private void ShowNewProjectInput()
         {
             showNewProjectInput = true;
             StateHasChanged();
-        }
-
-        private void ShowFileManager()
-        {
-            showFileManager = true;
         }
 
         private void ToggleDropdown()
@@ -81,19 +144,19 @@ namespace RAGPrompterWebApp.Pages
 
         private void DeleteProject(string project)
         {
-            projects.Remove(project);
+            ProjectService.DeleteProject(project);
             if (selectedProject == project)
             {
-                selectedProject = projects[0];
+                selectedProject = ProjectService.GetProjects()[0];
             }
             showDropdown = false;
         }
 
         private void AddNewProject()
         {
-            if (!string.IsNullOrWhiteSpace(newProjectName) && !projects.Contains(newProjectName))
+            if (ProjectService.IsValidProjectName(newProjectName))
             {
-                projects.Add(newProjectName);
+                ProjectService.AddProject(newProjectName);
                 selectedProject = newProjectName;
                 CancelNewProject();
             }
@@ -117,66 +180,12 @@ namespace RAGPrompterWebApp.Pages
                 CancelNewProject();
             }
         }
+        #endregion
 
-        private async Task ProcessFiles(InputFileChangeEventArgs e, bool isFolder = false)
+        #region File Management
+        private void ShowFileManager()
         {
-                isUploading = true;
-            StateHasChanged();
-
-            uploadCts = new CancellationTokenSource();
-
-
-
-            try
-            {
-                await Task.Run(async () => {
-                    var newFiles = e.GetMultipleFiles(maxFileAmount);
-                    totalFiles = newFiles.Count;
-                    processedFiles = 0;
-                    await InvokeAsync(StateHasChanged);
-
-                    foreach (var file in newFiles)
-                    {
-                        if (uploadCts.Token.IsCancellationRequested) break;
-
-                        string fileName = isFolder ? file.Name.Split('/').Last() : file.Name;
-
-                        if (!files.Any(f => f.Name == fileName && f.Size == file.Size))
-                        {
-                            files.Add(file);
-                            processedFiles++;
-
-                            if (processedFiles % 10 == 0)
-                            {
-                                await InvokeAsync(StateHasChanged);
-                                await Task.Delay(1);
-                            }
-                        }
-                    }
-                }, uploadCts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                files.Clear();
-            }
-            finally
-            {
-                isUploading = false;
-                uploadCts.Dispose();
-                uploadCts = null;
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-
-        private async Task UploadFiles(InputFileChangeEventArgs e) =>
-            await ProcessFiles(e);
-
-        private async Task UploadFolders(InputFileChangeEventArgs e) =>
-            await ProcessFiles(e, true);
-
-        private void CancelUpload()
-        {
-            uploadCts?.Cancel();
+            showFileManager = true;
         }
 
         private void HandleClearAll()
@@ -193,7 +202,9 @@ namespace RAGPrompterWebApp.Pages
                 StateHasChanged();
             }
         }
+        #endregion
 
+        #region Prompt Management
         private void GeneratePrompt()
         {
             generatedPrompt = question;
@@ -204,5 +215,6 @@ namespace RAGPrompterWebApp.Pages
         {
             await JS.InvokeVoidAsync("clipboardCopy.copyText", generatedPrompt);
         }
+        #endregion
     }
 }

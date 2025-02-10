@@ -9,15 +9,30 @@
                 </button>
             </div>
             <div class="p-6">
-                <div class="flex justify-between mb-2 text-sm text-gray-400">
-                    <span>Processing files...</span>
-                    <span>@ProcessedFiles of @TotalFiles</span>
-                </div>
-                <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div class="h-full bg-indigo-600 transition-all duration-200"
-                         style="width: @(TotalFiles > 0 ? (ProcessedFiles * 100 / TotalFiles) : 0)%">
+                @if (IsZipping)
+                {
+                    <div class="flex justify-between mb-2 text-sm text-gray-400">
+                        <span>Creating archive...</span>
+                        <span>@ProcessedFiles of @TotalFiles files</span>
                     </div>
-                </div>
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-indigo-600 transition-all duration-200"
+                             style="width: @(TotalFiles > 0 ? (ProcessedFiles * 100 / TotalFiles) : 0)%">
+                        </div>
+                    </div>
+                }
+                @if (IsUploading)
+                {
+                    <div class="mt-4 flex justify-between mb-2 text-sm text-gray-400">
+                        <span>Uploading archive...</span>
+                        <span>@FormatFileSize(UploadedBytes) of @FormatFileSize(TotalBytes)</span>
+                    </div>
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-green-600 transition-all duration-200"
+                             style="width: @(TotalBytes > 0 ? (UploadedBytes * 100 / TotalBytes) : 0)%">
+                        </div>
+                    </div>
+                }
                 <div class="mt-4 flex justify-end">
                     <button @onclick="HandleCancel"
                             class="px-4 py-2 text-sm text-gray-400 hover:text-white">
@@ -28,4 +43,3 @@
         </div>
     </div>
 }
-

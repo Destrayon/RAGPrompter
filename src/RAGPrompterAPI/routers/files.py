@@ -6,15 +6,17 @@ router = APIRouter()
 file_service = FileService()
 
 @router.post("/{project_name}/upload")
-async def upload_files(
+async def upload_archive(
     project_name: str = Path(..., description="Name of the project"),
-    files: List[UploadFile] = File(...),
+    archive: UploadFile = File(..., description="Archive file (.zip, .tar, .tar.gz, .tgz, .rar)"),
 ):
     """
-    Upload multiple files to a specific project directory using streaming
+    Upload a single archive file to a specific project.
+    The archive is recursively extracted (flattening any folder structure) 
+    and all individual files are saved into the project folder.
     """
     try:
-        result = await file_service.save_files(project_name, files)
+        result = await file_service.save_files(project_name, archive)
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
